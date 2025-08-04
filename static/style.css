@@ -1,0 +1,111 @@
+/* Genel Stil */
+body {
+    background: #f4f4f4;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+}
+
+/* Container */
+.container {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    width: 350px;
+    text-align: center;
+}
+
+/* Başlıklar */
+h1 {
+    font-size: 22px;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+h2 {
+    font-size: 18px;
+    margin: 15px 0;
+    color: #444;
+}
+
+/* Input ve Textarea */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+textarea {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+input:focus,
+textarea:focus {
+    border-color: #7b4397;
+    outline: none;
+}
+
+/* Dosya Alanı */
+.upload-area {
+    display: block;
+    border: 2px dashed #bbb;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.upload-area:hover {
+    background: #f8f8f8;
+}
+
+input[type="file"] {
+    display: none;
+}
+
+/* Butonlar */
+button {
+    background-color: #7b4397;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+    width: 100%;
+}
+
+button:hover {
+    background-color: #692f84;
+}
+
+/* Flash Mesajları */
+.flash {
+    margin-top: 10px;
+    background-color: #ffe3e3;
+    padding: 10px;
+    border-radius: 8px;
+    color: #a33;
+    font-size: 14px;
+}
+
+/* Linkler */
+a {
+    color: #7b4397;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+a:hover {
+    text-decoration: underline;
+}

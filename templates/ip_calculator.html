@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IP / Subnet Hesaplayıcı</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; padding: 20px; }
+        input, button { padding: 8px; font-size: 1rem; }
+        label { display: block; margin-top: 15px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #aaa; padding: 8px; text-align: left; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>IP / Subnet Hesaplayıcı</h1>
+
+    <form method="POST">
+        <label>IP Adresi (örn: 192.168.1.1 veya 10.0.0.0/24):</label>
+        <input type="text" name="ip" required placeholder="192.168.1.1 veya 10.0.0.0/24" value="{{ request.form.ip or '' }}">
+
+        <label>Subnet Mask / CIDR (örn: 24):</label>
+        <input type="number" name="cidr" min="0" max="32" placeholder="CIDR değeri" value="{{ request.form.cidr or '24' }}">
+
+        <br><br>
+        <button type="submit">Hesapla</button>
+    </form>
+
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+
+    {% if result %}
+        <table>
+            <tr><th>Ağ Adresi (Network Address)</th><td>{{ result.network }}</td></tr>
+            <tr><th>Broadcast Adresi</th><td>{{ result.broadcast }}</td></tr>
+            <tr><th>Alt Ağ Maskesi (Netmask)</th><td>{{ result.netmask }}</td></tr>
+            <tr><th>Wildcard Maskesi</th><td>{{ result.wildcard }}</td></tr>
+            <tr><th>IP Sınıfı</th><td>{{ result.ip_class }}</td></tr>
+            <tr><th>Kullanılabilir Host Aralığı</th><td>{{ result.host_min }} - {{ result.host_max }}</td></tr>
+            <tr><th>Toplam Host Sayısı</th><td>{{ result.total_hosts }}</td></tr>
+            <tr><th>Ağ Adresi (Binary)</th><td>{{ result.network_bin }}</td></tr>
+            <tr><th>Alt Ağ Maskesi (Binary)</th><td>{{ result.netmask_bin }}</td></tr>
+            <tr><th>Broadcast Adresi (Binary)</th><td>{{ result.broadcast_bin }}</td></tr>
+        </table>
+    {% endif %}
+</body>
+</html>
