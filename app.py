@@ -3,6 +3,7 @@ from functools import wraps
 import pymysql
 import os
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 from datetime import datetime, timedelta
 import smtplib
@@ -55,6 +56,9 @@ def login_required(role=None):
 
 @app.route('/')
 def home():
+    # Eğer kullanıcı zaten giriş yapmışsa direkt upload sayfasına yönlendir
+    if 'username' in session:
+        return redirect(url_for('upload_file'))
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -63,7 +67,8 @@ def register():
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
-        role = request.form['role']
+        # Kullanıcı kayıt olurken rol belirleyemez, hep 'user' olur
+        role = 'user'
 
         db = get_db()
         cur = db.cursor()
@@ -72,8 +77,9 @@ def register():
             flash("Bu kullanıcı adı veya email zaten kayıtlı.")
             return redirect(url_for('register'))
 
+        hashed_password = generate_password_hash(password)
         cur.execute("INSERT INTO users (username, email, password, role) VALUES (%s, %s, %s, %s)",
-                    (username, email, password, role))
+                    (username, email, hashed_password, role))
         db.commit()
         cur.close()
         flash("Kayıt başarılı, giriş yapabilirsiniz.")
@@ -88,11 +94,11 @@ def login():
 
     db = get_db()
     cur = db.cursor()
-    cur.execute("SELECT * FROM users WHERE username=%s AND password=%s", (username, password))
+    cur.execute("SELECT * FROM users WHERE username=%s", (username,))
     user = cur.fetchone()
     cur.close()
 
-    if user:
+    if user and check_password_hash(user['password'], password):
         session['username'] = user['username']
         session['role'] = user['role']
         session['user_id'] = user['id']
@@ -139,7 +145,7 @@ def upload_file():
     guest_email = None
 
     if request.method == 'GET':
-        return render_template('upload.html')
+        return render_template('upload.html', username=session.get('username'))
 
     file = request.files.get('file')
     receiver_email = request.form.get('receiver_email')
@@ -241,7 +247,9 @@ def get_user_email(user_id):
     return user['email'] if user else None
 
 def send_download_email(receiver, file_id, token, message, days):
-    link = f"http://<SUNUCU_IP_ADRESİ>:5000/download/{file_id}?token={token}&email={receiver}"
+    # Burada linki kendi domain adresine göre değiştir
+    domain = "http://localhost:5000"
+    link = f"{domain}/download/{file_id}?token={token}&email={receiver}"
     body = f"""
 Merhaba,
 
