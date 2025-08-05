@@ -179,7 +179,6 @@ def upload_file():
     file.seek(0)
 
     limit = MAX_SIZE_MEMBER if user_id else MAX_SIZE_GUEST
-    limit = MAX_SIZE_MEMBER if user_id else MAX_SIZE_GUEST
     if size > limit:
         if not user_id:
             flash("Misafir olarak yalnızca 5 MB'a kadar dosya gönderebilirsiniz. Daha büyük dosyalar için giriş yapın.")
@@ -191,7 +190,6 @@ def upload_file():
             flash(f"Dosya boyutu izin verilen sınırı aşıyor ({limit // (1024*1024)} MB).")
         return redirect(url_for('upload_file'))
 
-    # Kaydetme
     # Kaydetme
     original_name = secure_filename(file.filename)
     unique_name = str(uuid.uuid4()) + "_" + original_name
@@ -241,14 +239,12 @@ def download_file(file_id):
         cur.close()
         db.close()
         return "İndirme süresi dolmuş", 403
-
-    # Log kaydı
+    
     # Log kaydı
     cur.execute("INSERT INTO file_download_logs (file_id, downloader_email, download_time) VALUES (%s, %s, NOW())",
                 (file_id, downloader_email))
     db.commit()
 
-    # Bildirim gönder
     # Bildirim gönder
     owner_email = file['guest_email'] if file['guest_email'] else get_user_email(file['uploader_id'])
     if owner_email:
@@ -261,7 +257,6 @@ def download_file(file_id):
     db.close()
     return send_from_directory(app.config['UPLOAD_FOLDER'], file['saved_filename'], as_attachment=True)
 
-# ------------------- Yardımcılar -------------------
 
 # ------------------- Yardımcılar -------------------
 
@@ -322,4 +317,4 @@ def utility_processor():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    

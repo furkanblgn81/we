@@ -1,35 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Admin Dosyalar{% endblock %}
 {% block content %}
-<h3 class="mt-4 mb-4 text-center">Yüklenen Dosyalar</h3>
-<div class="table-responsive">
-    <table class="table table-bordered table-hover">
-        <thead class="table-dark">
-            <tr>
-                <th>Dosya Adı</th>
-                <th>Gönderen</th>
-                <th>Alıcı E-posta</th>
-                <th>Yükleme Tarihi</th>
-                <th>Geçerlilik</th>
-                <th>İndirme Geçmişi</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for file in files %}
-            <tr>
-                <td>{{ file.original_filename }}</td>
-                <td>{{ file.registered_user if file.registered_user else file.guest_email }}</td>
-                <td>{{ file.receiver_email }}</td>
-                <td>{{ file.upload_date }}</td>
-                <td>{{ file.max_download_time }}</td>
-                <td>
-                    {% for log in get_download_logs(file.id) %}
-                        {{ log.downloader_email }} - {{ log.download_time }}<br>
-                    {% endfor %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+<h2 class="text-center mb-4">Yüklenen Dosyalar</h2>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Dosya Adı</th>
+            <th>Gönderilen Email</th>
+            <th>Yükleyen</th>
+            <th>Yüklenme Tarihi</th>
+            <th>Geçerlilik Tarihi</th>
+            <th>İndirme Logları</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for file in files %}
+        <tr>
+            <td>{{ file.original_filename }}</td>
+            <td>{{ file.receiver_email }}</td>
+            <td>{{ file.registered_user or file.guest_email }}</td>
+            <td>{{ file.upload_date }}</td>
+            <td>{{ file.max_download_time }}</td>
+            <td>
+                {% for log in get_download_logs(file.id) %}
+                    <div>{{ log.downloader_email }} - {{ log.download_time }}</div>
+                {% endfor %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 {% endblock %}
