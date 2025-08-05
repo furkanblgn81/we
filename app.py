@@ -3,7 +3,6 @@ from functools import wraps
 import pymysql
 import os
 from werkzeug.utils import secure_filename
-from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 from datetime import datetime, timedelta
 import smtplib
@@ -24,7 +23,7 @@ MAX_SIZE_GUEST = 5 * 1024 * 1024     # 5 MB
 MAIL_SERVER = "smtp.gmail.com"
 MAIL_PORT = 587
 MAIL_USERNAME = "furkannbilgin82@gmail.com"
-MAIL_PASSWORD = "cfwbswwmrlglpotl"  # uygulama şifresi
+MAIL_PASSWORD = "cfwbswwmrlglpotl"  # Uygulama şifreni gir
 
 # ------------------- DB bağlantısı -------------------
 def get_db():
@@ -56,7 +55,7 @@ def login_required(role=None):
 
 @app.route('/')
 def home():
-    # Eğer kullanıcı zaten giriş yapmışsa direkt upload sayfasına yönlendir
+    # Eğer giriş yapılmışsa upload sayfasına yönlendir
     if 'username' in session:
         return redirect(url_for('upload_file'))
     return render_template('login.html')
@@ -67,21 +66,22 @@ def register():
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
-        # Kullanıcı kayıt olurken rol belirleyemez, hep 'user' olur
-        role = 'user'
+        role = 'user'  # Rol seçimi kaldırıldı, tüm kullanıcılar 'user'
 
         db = get_db()
         cur = db.cursor()
         cur.execute("SELECT * FROM users WHERE username=%s OR email=%s", (username, email))
         if cur.fetchone():
             flash("Bu kullanıcı adı veya email zaten kayıtlı.")
+            cur.close()
+            db.close()
             return redirect(url_for('register'))
 
-        hashed_password = generate_password_hash(password)
         cur.execute("INSERT INTO users (username, email, password, role) VALUES (%s, %s, %s, %s)",
-                    (username, email, hashed_password, role))
+                    (username, email, password, role))
         db.commit()
         cur.close()
+        db.close()
         flash("Kayıt başarılı, giriş yapabilirsiniz.")
         return redirect(url_for('home'))
 
@@ -94,14 +94,16 @@ def login():
 
     db = get_db()
     cur = db.cursor()
-    cur.execute("SELECT * FROM users WHERE username=%s", (username,))
+    cur.execute("SELECT * FROM users WHERE username=%s AND password=%s", (username, password))
     user = cur.fetchone()
     cur.close()
+    db.close()
 
-    if user and check_password_hash(user['password'], password):
+    if user:
         session['username'] = user['username']
         session['role'] = user['role']
         session['user_id'] = user['id']
+        flash(f"Hoşgeldin, {user['username']}!")
         return redirect(url_for('upload_file'))
     else:
         flash("Hatalı kullanıcı adı veya şifre!")
@@ -120,24 +122,31 @@ def admin_dashboard():
     cur = db.cursor()
     cur.execute("SELECT * FROM users ORDER BY id ASC")
     users = cur.fetchall()
-    cur.close()
-    return render_template('admin_dashboard.html', users=users)
 
-@app.route('/admin/files')
-@login_required(role='admin')
-def admin_files():
-    db = get_db()
-    cur = db.cursor()
+    # Dosya gönderim ve indirme logları için sorgular
     cur.execute("""
         SELECT f.id, f.original_filename, f.receiver_email, f.upload_date, f.max_download_time,
-               u.username AS registered_user, f.guest_email
+               u.username AS uploader_username, f.guest_email
         FROM uploaded_files f
         LEFT JOIN users u ON f.uploader_id = u.id
         ORDER BY f.upload_date DESC
+        LIMIT 50
     """)
     files = cur.fetchall()
+
+    cur.execute("""
+        SELECT l.download_time, l.downloader_email, f.original_filename, u.username AS uploader_username
+        FROM file_download_logs l
+        JOIN uploaded_files f ON l.file_id = f.id
+        LEFT JOIN users u ON f.uploader_id = u.id
+        ORDER BY l.download_time DESC
+        LIMIT 50
+    """)
+    downloads = cur.fetchall()
+
     cur.close()
-    return render_template('admin_files.html', files=files)
+    db.close()
+    return render_template('admin_dashboard.html', users=users, files=files, downloads=downloads)
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
@@ -145,7 +154,8 @@ def upload_file():
     guest_email = None
 
     if request.method == 'GET':
-        return render_template('upload.html', username=session.get('username'))
+        username = session.get('username')
+        return render_template('upload.html', username=username)
 
     file = request.files.get('file')
     receiver_email = request.form.get('receiver_email')
@@ -195,9 +205,14 @@ def upload_file():
     file_id = cur.lastrowid
     db.commit()
     cur.close()
+    db.close()
 
     # Mail gönder
-    send_download_email(receiver_email, file_id, token, message, valid_days)
+    try:
+        send_download_email(receiver_email, file_id, token, message, valid_days)
+    except Exception as e:
+        flash(f"Mail gönderilirken hata oluştu: {e}")
+        return redirect(url_for('upload_file'))
 
     flash("Dosya yüklendi ve mail gönderildi.")
     return redirect(url_for('upload_file'))
@@ -216,9 +231,13 @@ def download_file(file_id):
     file = cur.fetchone()
 
     if not file:
+        cur.close()
+        db.close()
         return "Geçersiz veya süresi dolmuş link", 403
 
     if file['max_download_time'] < datetime.utcnow():
+        cur.close()
+        db.close()
         return "İndirme süresi dolmuş", 403
 
     # Log kaydı
@@ -229,9 +248,13 @@ def download_file(file_id):
     # Bildirim gönder
     owner_email = file['guest_email'] if file['guest_email'] else get_user_email(file['uploader_id'])
     if owner_email:
-        send_download_notification(owner_email, file['original_filename'], downloader_email)
+        try:
+            send_download_notification(owner_email, file['original_filename'], downloader_email)
+        except Exception as e:
+            print("Bildirim maili gönderilemedi:", e)
 
     cur.close()
+    db.close()
     return send_from_directory(app.config['UPLOAD_FOLDER'], file['saved_filename'], as_attachment=True)
 
 # ------------------- Yardımcılar -------------------
@@ -244,12 +267,12 @@ def get_user_email(user_id):
     cur.execute("SELECT email FROM users WHERE id=%s", (user_id,))
     user = cur.fetchone()
     cur.close()
+    db.close()
     return user['email'] if user else None
 
 def send_download_email(receiver, file_id, token, message, days):
-    # Burada linki kendi domain adresine göre değiştir
-    domain = "http://localhost:5000"
-    link = f"{domain}/download/{file_id}?token={token}&email={receiver}"
+    # Burada mutlaka kendi domain adresini kullan
+    link = f"http://YOUR_DOMAIN_OR_IP/download/{file_id}?token={token}&email={receiver}"
     body = f"""
 Merhaba,
 
@@ -273,13 +296,10 @@ def send_email(to, subject, body):
     msg['From'] = MAIL_USERNAME
     msg['To'] = to
 
-    try:
-        with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as server:
-            server.starttls()
-            server.login(MAIL_USERNAME, MAIL_PASSWORD)
-            server.send_message(msg)
-    except Exception as e:
-        print("Mail gönderilemedi:", e)
+    with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as server:
+        server.starttls()
+        server.login(MAIL_USERNAME, MAIL_PASSWORD)
+        server.send_message(msg)
 
 @app.context_processor
 def utility_processor():
@@ -289,6 +309,7 @@ def utility_processor():
         cur.execute("SELECT downloader_email, download_time FROM file_download_logs WHERE file_id=%s ORDER BY download_time DESC", (file_id,))
         logs = cur.fetchall()
         cur.close()
+        db.close()
         return logs
     return dict(get_download_logs=get_download_logs)
 
