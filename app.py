@@ -24,7 +24,7 @@ MAX_SIZE_GUEST = 5 * 1024 * 1024     # 5 MB
 MAIL_SERVER = "smtp.gmail.com"
 MAIL_PORT = 587
 MAIL_USERNAME = "furkannbilgin82@gmail.com"
-MAIL_PASSWORD = "cfwbswwmrlglpotl"  # uygulama şifresi
+MAIL_PASSWORD = "cfwbswwmrlglpotl"  # Uygulama şifreni gir
 
 # ------------------- DB bağlantısı -------------------
 def get_db():
@@ -75,6 +75,8 @@ def register():
         cur.execute("SELECT * FROM users WHERE username=%s OR email=%s", (username, email))
         if cur.fetchone():
             flash("Bu kullanıcı adı veya email zaten kayıtlı.")
+            cur.close()
+            db.close()
             return redirect(url_for('register'))
 
         hashed_password = generate_password_hash(password)
@@ -82,6 +84,7 @@ def register():
                     (username, email, hashed_password, role))
         db.commit()
         cur.close()
+        db.close()
         flash("Kayıt başarılı, giriş yapabilirsiniz.")
         return redirect(url_for('home'))
 
@@ -97,11 +100,13 @@ def login():
     cur.execute("SELECT * FROM users WHERE username=%s", (username,))
     user = cur.fetchone()
     cur.close()
+    db.close()
 
     if user and check_password_hash(user['password'], password):
         session['username'] = user['username']
         session['role'] = user['role']
         session['user_id'] = user['id']
+        flash(f"Hoşgeldin, {user['username']}!")
         return redirect(url_for('upload_file'))
     else:
         flash("Hatalı kullanıcı adı veya şifre!")
@@ -153,6 +158,7 @@ def upload_file():
     valid_days = int(request.form.get('valid_days', 7))
 
     # Misafir ise kendi emailini zorunlu kıl
+    # Misafir ise kendi emailini zorunlu kıl
     if not user_id:
         guest_email = request.form.get('guest_email')
         if not guest_email:
@@ -167,15 +173,25 @@ def upload_file():
     file.seek(0, os.SEEK_END)
     size = file.tell()
     file.seek(0)
+    # Boyut kontrolü
+    file.seek(0, os.SEEK_END)
+    size = file.tell()
+    file.seek(0)
 
+    limit = MAX_SIZE_MEMBER if user_id else MAX_SIZE_GUEST
     limit = MAX_SIZE_MEMBER if user_id else MAX_SIZE_GUEST
     if size > limit:
         if not user_id:
             flash("Misafir olarak yalnızca 5 MB'a kadar dosya gönderebilirsiniz. Daha büyük dosyalar için giriş yapın.")
         else:
             flash(f"Dosya boyutu izin verilen sınırı aşıyor ({limit // (1024*1024)} MB).")
+        if not user_id:
+            flash("Misafir olarak yalnızca 5 MB'a kadar dosya gönderebilirsiniz. Daha büyük dosyalar için giriş yapın.")
+        else:
+            flash(f"Dosya boyutu izin verilen sınırı aşıyor ({limit // (1024*1024)} MB).")
         return redirect(url_for('upload_file'))
 
+    # Kaydetme
     # Kaydetme
     original_name = secure_filename(file.filename)
     unique_name = str(uuid.uuid4()) + "_" + original_name
@@ -195,6 +211,7 @@ def upload_file():
     file_id = cur.lastrowid
     db.commit()
     cur.close()
+    db.close()
 
     # Mail gönder
     send_download_email(receiver_email, file_id, token, message, valid_days)
@@ -216,23 +233,35 @@ def download_file(file_id):
     file = cur.fetchone()
 
     if not file:
+        cur.close()
+        db.close()
         return "Geçersiz veya süresi dolmuş link", 403
 
     if file['max_download_time'] < datetime.utcnow():
+        cur.close()
+        db.close()
         return "İndirme süresi dolmuş", 403
 
+    # Log kaydı
     # Log kaydı
     cur.execute("INSERT INTO file_download_logs (file_id, downloader_email, download_time) VALUES (%s, %s, NOW())",
                 (file_id, downloader_email))
     db.commit()
 
     # Bildirim gönder
+    # Bildirim gönder
     owner_email = file['guest_email'] if file['guest_email'] else get_user_email(file['uploader_id'])
     if owner_email:
-        send_download_notification(owner_email, file['original_filename'], downloader_email)
+        try:
+            send_download_notification(owner_email, file['original_filename'], downloader_email)
+        except Exception as e:
+            print("Bildirim maili gönderilemedi:", e)
 
     cur.close()
+    db.close()
     return send_from_directory(app.config['UPLOAD_FOLDER'], file['saved_filename'], as_attachment=True)
+
+# ------------------- Yardımcılar -------------------
 
 # ------------------- Yardımcılar -------------------
 
@@ -244,6 +273,7 @@ def get_user_email(user_id):
     cur.execute("SELECT email FROM users WHERE id=%s", (user_id,))
     user = cur.fetchone()
     cur.close()
+    db.close()
     return user['email'] if user else None
 
 def send_download_email(receiver, file_id, token, message, days):
@@ -273,13 +303,10 @@ def send_email(to, subject, body):
     msg['From'] = MAIL_USERNAME
     msg['To'] = to
 
-    try:
-        with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as server:
-            server.starttls()
-            server.login(MAIL_USERNAME, MAIL_PASSWORD)
-            server.send_message(msg)
-    except Exception as e:
-        print("Mail gönderilemedi:", e)
+    with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as server:
+        server.starttls()
+        server.login(MAIL_USERNAME, MAIL_PASSWORD)
+        server.send_message(msg)
 
 @app.context_processor
 def utility_processor():
@@ -289,8 +316,10 @@ def utility_processor():
         cur.execute("SELECT downloader_email, download_time FROM file_download_logs WHERE file_id=%s ORDER BY download_time DESC", (file_id,))
         logs = cur.fetchall()
         cur.close()
+        db.close()
         return logs
     return dict(get_download_logs=get_download_logs)
 
 if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
     app.run(host='0.0.0.0', port=5000, debug=True)
