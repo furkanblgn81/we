@@ -1,45 +1,46 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Dosya Yükle</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="container">
-        {% if username %}
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h2>Hoşgeldin, {{ username }}!</h2>
-                <form action="{{ url_for('logout') }}" method="GET" style="margin: 0;">
-                    <button type="submit" style="padding: 6px 12px; cursor: pointer;">Çıkış Yap</button>
-                </form>
-            </div>
+    <h2>Dosya Yükle</h2>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul style="color:red;">
+          {% for msg in messages %}
+            <li>{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    {% if username %}
+    <p>Hoşgeldin, {{ username }} | <a href="{{ url_for('logout') }}">Çıkış Yap</a></p>
+    {% else %}
+    <p>Misafir olarak dosya yükleyebilirsiniz. Dosya yüklerken e-posta adresinizi girmeniz zorunludur.</p>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('upload_file') }}" enctype="multipart/form-data">
+        <label for="file">Dosya Seç:</label><br>
+        <input type="file" name="file" id="file" required><br><br>
+
+        <label for="receiver_email">Alıcının E-posta Adresi:</label><br>
+        <input type="email" name="receiver_email" id="receiver_email" required><br><br>
+
+        <label for="message">Mesaj (opsiyonel):</label><br>
+        <textarea name="message" id="message"></textarea><br><br>
+
+        <label for="valid_days">Geçerlilik Süresi (gün):</label><br>
+        <input type="number" name="valid_days" id="valid_days" value="7" min="1" max="30"><br><br>
+
+        {% if not username %}
+        <label for="guest_email">Kendi E-posta Adresiniz (misafirler için zorunlu):</label><br>
+        <input type="email" name="guest_email" id="guest_email" required><br><br>
         {% endif %}
 
-        <h1>Dosya Yükleme</h1>
-
-        {% with messages = get_flashed_messages() %}
-          {% if messages %}
-            {% for message in messages %}
-              <div class="flash">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
-
-        <form method="POST" enctype="multipart/form-data">
-            {% if not username %}
-                <input type="email" name="guest_email" placeholder="E-posta adresiniz (misafir)" required>
-            {% endif %}
-
-            <input type="email" name="receiver_email" placeholder="Alıcı e-postası" required>
-            <textarea name="message" placeholder="Mesaj (opsiyonel)"></textarea>
-            <input type="number" name="valid_days" value="7" min="1" max="30" required>
-
-            <label for="file" class="upload-area">Dosya seçmek için tıklayın</label>
-            <input type="file" name="file" id="file" required>
-
-            <button type="submit">Gönder</button>
-        </form>
-    </div>
+        <button type="submit">Yükle ve Gönder</button>
+    </form>
 </body>
 </html>

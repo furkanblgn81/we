@@ -3,59 +3,72 @@
 <head>
     <meta charset="UTF-8" />
     <title>Admin Paneli</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        table, th, td { border:1px solid black; border-collapse: collapse; padding:5px; }
+    </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-  <div class="container">
-    <a class="navbar-brand" href="#">Admin Paneli</a>
-    <div class="collapse navbar-collapse">
-      <ul class="navbar-nav me-auto">
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_dashboard') }}">Kullanıcılar</a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_files') }}">Dosyalar</a></li>
-      </ul>
-      <span class="navbar-text me-3">
-        Hoşgeldin, {{ session['username'] }}
-      </span>
-      <a class="btn btn-outline-light" href="{{ url_for('logout') }}">Çıkış Yap</a>
-    </div>
-  </div>
-</nav>
+    <h2>Admin Paneli</h2>
+    <p><a href="{{ url_for('logout') }}">Çıkış Yap</a></p>
 
-<div class="container mt-4">
-    <h2>Kullanıcı Listesi</h2>
-
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <div class="alert alert-info">
-          {% for msg in messages %}
-            <div>{{ msg }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
-
-    <table class="table table-striped">
+    <h3>Kullanıcılar</h3>
+    <table>
         <thead>
-            <tr>
-                <th>ID</th><th>Kullanıcı Adı</th><th>Email</th><th>Rol</th><th>İşlemler</th>
-            </tr>
+            <tr><th>ID</th><th>Kullanıcı Adı</th><th>E-posta</th><th>Rol</th></tr>
         </thead>
         <tbody>
-            {% for user in users %}
+        {% for user in users %}
             <tr>
                 <td>{{ user.id }}</td>
                 <td>{{ user.username }}</td>
                 <td>{{ user.email }}</td>
                 <td>{{ user.role }}</td>
-                <td>
-                    <a href="{{ url_for('edit_user', id=user.id) }}" class="btn btn-sm btn-primary">Düzenle</a>
-                    <a href="{{ url_for('delete_user', id=user.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Silmek istediğinize emin misiniz?');">Sil</a>
-                </td>
             </tr>
-            {% endfor %}
+        {% endfor %}
         </tbody>
     </table>
-</div>
+
+    <h3>Yüklenen Dosyalar</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th><th>Dosya Adı</th><th>Gönderen</th><th>Misafir E-posta</th><th>Alıcı E-posta</th>
+                <th>Yüklenme Tarihi</th><th>Geçerlilik Süresi</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for file in files %}
+            <tr>
+                <td>{{ file.id }}</td>
+                <td>{{ file.original_filename }}</td>
+                <td>{{ file.uploader_username or "Misafir" }}</td>
+                <td>{{ file.guest_email or "-" }}</td>
+                <td>{{ file.receiver_email }}</td>
+                <td>{{ file.upload_date }}</td>
+                <td>{{ file.max_download_time }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>İndirme Kayıtları</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>İndirme Tarihi</th><th>İndiren E-posta</th><th>Dosya Adı</th><th>Gönderen Kullanıcı</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for d in downloads %}
+            <tr>
+                <td>{{ d.download_time }}</td>
+                <td>{{ d.downloader_email }}</td>
+                <td>{{ d.original_filename }}</td>
+                <td>{{ d.uploader_username or "Misafir" }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
 </body>
 </html>
