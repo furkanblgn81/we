@@ -241,7 +241,8 @@ def get_user_email(user_id):
     return user['email'] if user else None
 
 def send_download_email(receiver, file_id, token, message, days):
-    link = f"http://localhost:5000/download/{file_id}?token={token}&email={receiver}"
+    SERVER_URL = "http://<SUNUCU_IP_ADRESİN>:5000"
+    link = f"{SERVER_URL}/download/{file_id}?token={token}&email={receiver}"
     body = f"""
 Merhaba,
 
