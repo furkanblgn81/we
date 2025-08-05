@@ -1,74 +1,28 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8" />
-    <title>Admin Paneli</title>
-    <style>
-        table, th, td { border:1px solid black; border-collapse: collapse; padding:5px; }
-    </style>
-</head>
-<body>
-    <h2>Admin Paneli</h2>
-    <p><a href="{{ url_for('logout') }}">Çıkış Yap</a></p>
-
-    <h3>Kullanıcılar</h3>
-    <table>
-        <thead>
-            <tr><th>ID</th><th>Kullanıcı Adı</th><th>E-posta</th><th>Rol</th></tr>
+{% extends "base.html" %}
+{% block title %}Admin Paneli{% endblock %}
+{% block content %}
+<h3 class="mt-4 mb-4 text-center">Kullanıcı Listesi</h3>
+<div class="table-responsive">
+    <table class="table table-bordered table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Kullanıcı Adı</th>
+                <th>Email</th>
+                <th>Rol</th>
+            </tr>
         </thead>
         <tbody>
-        {% for user in users %}
+            {% for user in users %}
             <tr>
                 <td>{{ user.id }}</td>
                 <td>{{ user.username }}</td>
                 <td>{{ user.email }}</td>
                 <td>{{ user.role }}</td>
             </tr>
-        {% endfor %}
+            {% endfor %}
         </tbody>
     </table>
-
-    <h3>Yüklenen Dosyalar</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th><th>Dosya Adı</th><th>Gönderen</th><th>Misafir E-posta</th><th>Alıcı E-posta</th>
-                <th>Yüklenme Tarihi</th><th>Geçerlilik Süresi</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for file in files %}
-            <tr>
-                <td>{{ file.id }}</td>
-                <td>{{ file.original_filename }}</td>
-                <td>{{ file.uploader_username or "Misafir" }}</td>
-                <td>{{ file.guest_email or "-" }}</td>
-                <td>{{ file.receiver_email }}</td>
-                <td>{{ file.upload_date }}</td>
-                <td>{{ file.max_download_time }}</td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-
-    <h3>İndirme Kayıtları</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>İndirme Tarihi</th><th>İndiren E-posta</th><th>Dosya Adı</th><th>Gönderen Kullanıcı</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for d in downloads %}
-            <tr>
-                <td>{{ d.download_time }}</td>
-                <td>{{ d.downloader_email }}</td>
-                <td>{{ d.original_filename }}</td>
-                <td>{{ d.uploader_username or "Misafir" }}</td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-
-</body>
-</html>
+</div>
+<a href="{{ url_for('admin_files') }}" class="btn btn-info">Dosyaları Görüntüle</a>
+{% endblock %}

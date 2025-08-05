@@ -1,46 +1,36 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8" />
-    <title>Dosya Yükle</title>
-</head>
-<body>
-    <h2>Dosya Yükle</h2>
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <ul style="color:red;">
-          {% for msg in messages %}
-            <li>{{ msg }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
-
-    {% if username %}
-    <p>Hoşgeldin, {{ username }} | <a href="{{ url_for('logout') }}">Çıkış Yap</a></p>
-    {% else %}
-    <p>Misafir olarak dosya yükleyebilirsiniz. Dosya yüklerken e-posta adresinizi girmeniz zorunludur.</p>
-    {% endif %}
-
-    <form method="POST" action="{{ url_for('upload_file') }}" enctype="multipart/form-data">
-        <label for="file">Dosya Seç:</label><br>
-        <input type="file" name="file" id="file" required><br><br>
-
-        <label for="receiver_email">Alıcının E-posta Adresi:</label><br>
-        <input type="email" name="receiver_email" id="receiver_email" required><br><br>
-
-        <label for="message">Mesaj (opsiyonel):</label><br>
-        <textarea name="message" id="message"></textarea><br><br>
-
-        <label for="valid_days">Geçerlilik Süresi (gün):</label><br>
-        <input type="number" name="valid_days" id="valid_days" value="7" min="1" max="30"><br><br>
-
-        {% if not username %}
-        <label for="guest_email">Kendi E-posta Adresiniz (misafirler için zorunlu):</label><br>
-        <input type="email" name="guest_email" id="guest_email" required><br><br>
-        {% endif %}
-
-        <button type="submit">Yükle ve Gönder</button>
-    </form>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Dosya Yükle{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card p-4 mt-5">
+            <h3 class="text-center mb-4">Dosya Yükle</h3>
+            <form method="POST" action="{{ url_for('upload_file') }}" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label">Dosya Seç</label>
+                    <input type="file" name="file" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Alıcının E-posta Adresi</label>
+                    <input type="email" name="receiver_email" class="form-control" required>
+                </div>
+                {% if not session.username %}
+                <div class="mb-3">
+                    <label class="form-label">Kendi E-posta Adresiniz (Misafir)</label>
+                    <input type="email" name="guest_email" class="form-control" required>
+                </div>
+                {% endif %}
+                <div class="mb-3">
+                    <label class="form-label">Mesaj (Opsiyonel)</label>
+                    <textarea name="message" class="form-control"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Geçerlilik Süresi (Gün)</label>
+                    <input type="number" name="valid_days" class="form-control" value="7" min="1">
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Gönder</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
