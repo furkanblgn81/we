@@ -107,26 +107,46 @@ def logout():
     flash("Çıkış yapıldı.")
     return redirect(url_for('home'))
 
+@app.route('/admin/dashboard')
+@login_required(role='admin')
+def admin_dashboard():
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT * FROM users ORDER BY id ASC")
+    users = cur.fetchall()
+    cur.close()
+    return render_template('admin_dashboard.html', users=users)
+
+@app.route('/admin/files')
+@login_required(role='admin')
+def admin_files():
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        SELECT f.id, f.original_filename, f.receiver_email, f.upload_date, f.max_download_time,
+               u.username AS registered_user, f.guest_email
+        FROM uploaded_files f
+        LEFT JOIN users u ON f.uploader_id = u.id
+        ORDER BY f.upload_date DESC
+    """)
+    files = cur.fetchall()
+    cur.close()
+    return render_template('admin_files.html', files=files)
+
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
     user_id = session.get('user_id')
-    username = session.get('username') if user_id else None
     guest_email = None
 
     if request.method == 'GET':
-        return render_template('upload.html', username=username)
+        return render_template('upload.html')
 
     file = request.files.get('file')
     receiver_email = request.form.get('receiver_email')
     message = request.form.get('message')
     valid_days = int(request.form.get('valid_days', 7))
 
-    limit = MAX_SIZE_MEMBER if user_id else MAX_SIZE_GUEST
-
-    if request.content_length and request.content_length > limit:
-        flash(f"Dosya boyutu izin verilen sınırı aşıyor! Maksimum: {limit // (1024*1024)} MB")
-        return redirect(url_for('upload_file'))
-
+    # Misafir ise kendi emailini zorunlu kıl
     if not user_id:
         guest_email = request.form.get('guest_email')
         if not guest_email:
@@ -137,15 +157,20 @@ def upload_file():
         flash("Dosya seçilmedi.")
         return redirect(url_for('upload_file'))
 
-    file_content = file.read()
-    size = len(file_content)
-
-    if size > limit:
-        flash(f"Dosya boyutu izin verilen sınırı aşıyor! Maksimum: {limit // (1024*1024)} MB")
-        return redirect(url_for('upload_file'))
-
+    # Boyut kontrolü
+    file.seek(0, os.SEEK_END)
+    size = file.tell()
     file.seek(0)
 
+    limit = MAX_SIZE_MEMBER if user_id else MAX_SIZE_GUEST
+    if size > limit:
+        if not user_id:
+            flash("Misafir olarak yalnızca 5 MB'a kadar dosya gönderebilirsiniz. Daha büyük dosyalar için giriş yapın.")
+        else:
+            flash(f"Dosya boyutu izin verilen sınırı aşıyor ({limit // (1024*1024)} MB).")
+        return redirect(url_for('upload_file'))
+
+    # Kaydetme
     original_name = secure_filename(file.filename)
     unique_name = str(uuid.uuid4()) + "_" + original_name
     save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
@@ -165,6 +190,7 @@ def upload_file():
     db.commit()
     cur.close()
 
+    # Mail gönder
     send_download_email(receiver_email, file_id, token, message, valid_days)
 
     flash("Dosya yüklendi ve mail gönderildi.")
@@ -189,10 +215,12 @@ def download_file(file_id):
     if file['max_download_time'] < datetime.utcnow():
         return "İndirme süresi dolmuş", 403
 
+    # Log kaydı
     cur.execute("INSERT INTO file_download_logs (file_id, downloader_email, download_time) VALUES (%s, %s, NOW())",
                 (file_id, downloader_email))
     db.commit()
 
+    # Bildirim gönder
     owner_email = file['guest_email'] if file['guest_email'] else get_user_email(file['uploader_id'])
     if owner_email:
         send_download_notification(owner_email, file['original_filename'], downloader_email)
@@ -200,7 +228,8 @@ def download_file(file_id):
     cur.close()
     return send_from_directory(app.config['UPLOAD_FOLDER'], file['saved_filename'], as_attachment=True)
 
-# Yardımcı fonksiyonlar
+# ------------------- Yardımcılar -------------------
+
 def get_user_email(user_id):
     if not user_id:
         return None
@@ -212,7 +241,7 @@ def get_user_email(user_id):
     return user['email'] if user else None
 
 def send_download_email(receiver, file_id, token, message, days):
-    link = f"http://localhost:5000/download/{file_id}?token={token}&email={receiver}"
+    link = f"http://<SUNUCU_IP_ADRESİ>:5000/download/{file_id}?token={token}&email={receiver}"
     body = f"""
 Merhaba,
 
@@ -256,4 +285,4 @@ def utility_processor():
     return dict(get_download_logs=get_download_logs)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
