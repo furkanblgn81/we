@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
 <h2 class="text-center mb-4">Giriş Yap</h2>
-<form method="POST" action="/login">
+<form method="POST" action="{{ url_for('login') }}">
     <div class="mb-3">
-        <label>Kullanıcı Adı</label>
-        <input type="text" name="username" class="form-control" required>
+        <label for="username" class="form-label">Kullanıcı Adı</label>
+        <input type="text" id="username" name="username" class="form-control" required autofocus>
     </div>
     <div class="mb-3">
-        <label>Şifre</label>
-        <input type="password" name="password" class="form-control" required>
+        <label for="password" class="form-label">Şifre</label>
+        <input type="password" id="password" name="password" class="form-control" required>
     </div>
-    <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
-    <p class="mt-3 text-center">Hesabın yok mu? <a href="/register">Kayıt Ol</a></p>
+    <button type="submit">Giriş Yap</button>
+    <p class="mt-3 text-center">Hesabın yok mu? <a href="{{ url_for('register') }}">Kayıt Ol</a></p>
 </form>
 {% endblock %}

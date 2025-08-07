@@ -11,24 +11,20 @@ from email.mime.text import MIMEText
 import re
 
 app = Flask(__name__)
-# Güçlü bir secret key üretmek için örnek (prod ortamda sabit veya ortam değişkeninden alınmalı)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "süper-gizli-ve-uzun-key")
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Boyut limitleri
 MAX_SIZE_MEMBER = 500 * 1024 * 1024  # 500 MB
 MAX_SIZE_GUEST = 5 * 1024 * 1024     # 5 MB
 
-# Mail ayarları
 MAIL_SERVER = "smtp.gmail.com"
 MAIL_PORT = 587
 MAIL_USERNAME = "furkannbilgin82@gmail.com"
-MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")  # Ortam değişkeninden okunuyor
+MAIL_PASSWORD = os.getenv("baixextgzodivtuc")  # Ortam değişkeni adı doğru olmalı (örn: MAIL_PASSWORD)
 
-# ------------------- DB bağlantısı -------------------
 def get_db():
     return pymysql.connect(
         host="localhost",
@@ -39,7 +35,6 @@ def get_db():
         cursorclass=pymysql.cursors.DictCursor
     )
 
-# ------------------- Login kontrol -------------------
 def login_required(role=None):
     def decorator(f):
         @wraps(f)
@@ -54,12 +49,9 @@ def login_required(role=None):
         return decorated
     return decorator
 
-# Basit email regex doğrulaması
 def is_valid_email(email):
     regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     return re.match(regex, email) is not None
-
-# ------------------- ROUTES -------------------
 
 @app.route('/')
 def home():
@@ -168,7 +160,13 @@ def upload_file():
     file = request.files.get('file')
     receiver_email = request.form.get('receiver_email', '').strip()
     message = request.form.get('message', '').strip()
-    valid_days = int(request.form.get('valid_days', 7))
+    valid_days = request.form.get('valid_days', '7')
+    try:
+        valid_days = int(valid_days)
+        if valid_days < 1 or valid_days > 30:
+            valid_days = 7
+    except:
+        valid_days = 7
 
     if not user_id:
         guest_email = request.form.get('guest_email', '').strip()
@@ -187,7 +185,6 @@ def upload_file():
         flash("Alıcı e-posta adresi geçerli değil.")
         return redirect(url_for('upload_file'))
 
-    # Dosya boyutu kontrolü
     file.seek(0, os.SEEK_END)
     size = file.tell()
     file.seek(0)
@@ -227,7 +224,6 @@ def upload_file():
         cur.close()
         db.close()
 
-    # Mail gönderimi
     try:
         send_download_email(receiver_email, file_id, token, message, valid_days)
     except Exception as e:
@@ -260,7 +256,6 @@ def download_file(file_id):
         db.close()
         return abort(403, description="İndirme süresi dolmuş.")
 
-    # İndirme logu
     try:
         cur.execute("INSERT INTO file_download_logs (file_id, downloader_email, download_time) VALUES (%s, %s, NOW())",
                     (file_id, downloader_email))
@@ -269,7 +264,6 @@ def download_file(file_id):
         db.rollback()
         print("Download log kaydı hata:", e)
 
-    # Dosya sahibi email
     owner_email = file['guest_email'] if file['guest_email'] else get_user_email(file['uploader_id'])
 
     if owner_email:
@@ -281,9 +275,6 @@ def download_file(file_id):
     cur.close()
     db.close()
     return send_from_directory(app.config['UPLOAD_FOLDER'], file['saved_filename'], as_attachment=True)
-
-
-# ------------------- Yardımcılar -------------------
 
 def get_user_email(user_id):
     if not user_id:
@@ -297,7 +288,7 @@ def get_user_email(user_id):
     return user['email'] if user else None
 
 def send_download_email(receiver, file_id, token, message, days):
-    domain = "http://localhost:5000"  # Buraya kendi domaininizi yazın
+    domain = "http://localhost:5000"  # Kendi domaininle değiştir
     link = f"{domain}/download/{file_id}?token={token}&email={receiver}"
     body = f"""
 Merhaba,

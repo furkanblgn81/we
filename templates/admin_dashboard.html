@@ -1,25 +1,29 @@
 {% extends "base.html" %}
 {% block content %}
 <h2 class="text-center mb-4">Kullanıcı Listesi</h2>
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Kullanıcı Adı</th>
-            <th>Email</th>
-            <th>Rol</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for user in users %}
-        <tr>
-            <td>{{ user.id }}</td>
-            <td>{{ user.username }}</td>
-            <td>{{ user.email }}</td>
-            <td>{{ user.role }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-<a href="/admin/files" class="btn btn-info">Dosya Listesi</a>
+
+<div class="table-responsive">
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Kullanıcı Adı</th>
+                <th>Email</th>
+                <th>Rol</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.id }}</td>
+                <td>{{ user.username }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.role }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<a href="{{ url_for('admin_files') }}" class="btn btn-info mt-3">Dosya Listesi</a>
 {% endblock %}

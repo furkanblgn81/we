@@ -3,34 +3,57 @@
 <h2 class="text-center mb-4">Dosya Yükle</h2>
 
 {% if username %}
-<div class="alert alert-success text-center">Giriş yapmışsınız! Maksimum 500 MB yükleyebilirsiniz.</div>
+<div class="alert alert-success text-center">
+    Giriş yapmışsınız. Maksimum <strong>500 MB</strong> dosya yükleyebilirsiniz.
+</div>
 {% else %}
-<div class="alert alert-warning text-center">Misafir olarak yükleme yapıyorsunuz. Maksimum 5 MB yükleyebilirsiniz.</div>
+<div class="alert alert-warning text-center">
+    Misafir olarak yükleme yapıyorsunuz. Maksimum <strong>5 MB</strong> dosya yükleyebilirsiniz.
+</div>
 {% endif %}
 
-<form method="POST" action="/upload" enctype="multipart/form-data">
+<form method="POST" action="{{ url_for('upload_file') }}" enctype="multipart/form-data" novalidate>
     {% if not username %}
     <div class="mb-3">
-        <label>Kendi Email Adresiniz (Zorunlu)</label>
-        <input type="email" name="guest_email" class="form-control" required>
+        <label for="guest_email" class="form-label">Kendi Email Adresiniz (Zorunlu)</label>
+        <input type="email" id="guest_email" name="guest_email" class="form-control" required placeholder="Misafir e-posta adresiniz">
     </div>
     {% endif %}
+
     <div class="mb-3">
-        <label>Gönderilecek Email</label>
-        <input type="email" name="receiver_email" class="form-control" required>
+        <label for="receiver_email" class="form-label">Gönderilecek Email</label>
+        <input type="email" id="receiver_email" name="receiver_email" class="form-control" required placeholder="Alıcının e-posta adresi">
     </div>
+
     <div class="mb-3">
-        <label>Mesaj</label>
-        <textarea name="message" class="form-control"></textarea>
+        <label for="message" class="form-label">Mesaj</label>
+        <textarea id="message" name="message" class="form-control" rows="3" placeholder="İsterseniz mesaj yazabilirsiniz..."></textarea>
     </div>
+
     <div class="mb-3">
-        <label>Dosya Seç</label>
-        <input type="file" name="file" class="form-control" required>
+        <label for="file" class="form-label upload-area" tabindex="0">
+            Dosya Seç veya Bırakınız (maksimum {% if username %}500{% else %}5{% endif %} MB)
+        </label>
+        <input type="file" id="file" name="file" required>
     </div>
+
     <div class="mb-3">
-        <label>Geçerlilik Süresi (gün)</label>
-        <input type="number" name="valid_days" value="7" min="1" max="30" class="form-control">
+        <label for="valid_days" class="form-label">Geçerlilik Süresi (gün)</label>
+        <input type="number" id="valid_days" name="valid_days" value="7" min="1" max="30" class="form-control">
     </div>
-    <button type="submit" class="btn btn-primary w-100">Gönder</button>
+
+    <button type="submit">Gönder</button>
 </form>
+
+<script>
+    const uploadLabel = document.querySelector('.upload-area');
+    const fileInput = document.getElementById('file');
+    uploadLabel.addEventListener('keydown', function(e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        fileInput.click();
+      }
+    });
+    uploadLabel.addEventListener('click', () => fileInput.click());
+</script>
 {% endblock %}
