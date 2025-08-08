@@ -1,36 +1,42 @@
 {% extends "base.html" %}
 {% block content %}
 <h2 class="text-center mb-4">Yüklenen Dosyalar</h2>
+
 <div class="table-responsive">
-<table class="table table-bordered table-striped">
-    <thead class="table-dark">
-        <tr>
-            <th>Dosya Adı</th>
-            <th>Gönderilen Email</th>
-            <th>Yükleyen</th>
-            <th>Yüklenme Tarihi</th>
-            <th>Geçerlilik Tarihi</th>
-            <th>İndirme Logları</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for file in files %}
-        <tr>
-            <td>{{ file.original_filename }}</td>
-            <td>{{ file.receiver_email }}</td>
-            <td>{{ file.registered_user or file.guest_email }}</td>
-            <td>{{ file.upload_date.strftime('%Y-%m-%d %H:%M') if file.upload_date else '' }}</td>
-            <td>{{ file.max_download_time.strftime('%Y-%m-%d %H:%M') if file.max_download_time else '' }}</td>
-            <td style="max-height: 150px; overflow-y: auto; max-width: 250px;">
-                {% for log in get_download_logs(file.id) %}
-                    <div>{{ log.downloader_email }} - {{ log.download_time.strftime('%Y-%m-%d %H:%M') }}</div>
-                {% else %}
-                    <small>İndirme kaydı yok</small>
-                {% endfor %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+    <table class="table table-bordered table-striped align-middle text-center">
+        <thead class="table-dark">
+            <tr>
+                <th>Dosya Adı</th>
+                <th>Gönderilen Email</th>
+                <th>Yükleyen</th>
+                <th>Yüklenme Tarihi</th>
+                <th>Geçerlilik Tarihi</th>
+                <th>İndirme Logları</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for file in files %}
+            <tr>
+                <td>{{ file.original_filename }}</td>
+                <td>{{ file.receiver_email }}</td>
+                <td>{{ file.registered_user or file.guest_email }}</td>
+                <td>{{ file.upload_date.strftime('%Y-%m-%d %H:%M') if file.upload_date else '' }}</td>
+                <td>{{ file.max_download_time.strftime('%Y-%m-%d %H:%M') if file.max_download_time else '' }}</td>
+                <td style="max-width: 300px; overflow-y: auto;">
+                    {% set logs = get_download_logs(file.id) %}
+                    {% if logs %}
+                        <ul class="list-unstyled text-start">
+                            {% for log in logs %}
+                                <li>📥 {{ log.downloader_email }} – {{ log.download_time.strftime('%Y-%m-%d %H:%M') }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <small class="text-muted">İndirme kaydı yok</small>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endblock %}
