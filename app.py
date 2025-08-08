@@ -11,7 +11,7 @@ from email.mime.text import MIMEText
 import re
 
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "süper-gizli-ve-uzun-key")
+app.secret_key = os.getenv("uzun-key")
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
