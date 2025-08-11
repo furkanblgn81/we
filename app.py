@@ -210,8 +210,8 @@ def upload_file():
     try:
         cur.execute("""
             INSERT INTO uploaded_files 
-            (uploader_id, guest_email, original_filename, saved_filename, upload_date, max_download_time, token, receiver_email, message)
-            VALUES (%s, %s, %s, %s, NOW(), %s, %s, %s, %s)
+            (uploader_id, guest_email, original_filename, saved_filename, max_download_time, token, receiver_email, message)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (user_id, guest_email, original_name, unique_name, valid_until, token, receiver_email, message))
         file_id = cur.lastrowid
         db.commit()
