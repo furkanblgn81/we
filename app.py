@@ -11,7 +11,7 @@ from email.mime.text import MIMEText
 import re
 
 app = Flask(__name__)
-app.secret_key = os.getenv("uzun-key")
+app.secret_key = "key"  # Buraya kendi gizli anahtarını yaz
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -23,7 +23,7 @@ MAX_SIZE_GUEST = 5 * 1024 * 1024     # 5 MB
 MAIL_SERVER = "smtp.gmail.com"
 MAIL_PORT = 587
 MAIL_USERNAME = "furkannbilgin82@gmail.com"
-MAIL_PASSWORD = os.getenv("baixextgzodivtuc")  # Ortam değişkeni adı doğru olmalı (örn: MAIL_PASSWORD)
+MAIL_PASSWORD = "baixextgzodivtuc"  # Buraya uygulama şifreni yaz
 
 def get_db():
     return pymysql.connect(
@@ -288,7 +288,7 @@ def get_user_email(user_id):
     return user['email'] if user else None
 
 def send_download_email(receiver, file_id, token, message, days):
-    domain = "http://localhost:5000"  # Kendi domaininle değiştir
+    domain = "https://furkanbilgin.com.tr"  # Kendi domaininle değiştir
     link = f"{domain}/download/{file_id}?token={token}&email={receiver}"
     body = f"""
 Merhaba,
