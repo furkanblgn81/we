@@ -102,38 +102,28 @@ def login():
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '')
 
-    log.debug("Login attempt for username/email: %s", username)
+    log.debug(f"Login attempt: username/email={username}, password length={len(password)}")
 
     db = get_db()
     cur = db.cursor()
-    # Hem username hem email ile kabul edelim
     cur.execute("SELECT * FROM users WHERE username=%s OR email=%s", (username, username))
     user = cur.fetchone()
     cur.close()
     db.close()
 
-    log.debug("User fetched from DB: %s", user)
+    log.debug(f"User found: {user}")
 
     if not user:
         flash("Kullanıcı bulunamadı.")
         return redirect(url_for('home'))
 
-    # Debug: veritabanındaki password değeri (sadece debug için; production'da kaldır)
-    log.debug("DB password value: %s", user.get('password'))
-
-    # Gerçek doğrulama: werkzeug check_password_hash
     try:
         ok = check_password_hash(user['password'], password)
     except Exception as e:
-        log.exception("check_password_hash hata")
+        log.exception("Password check error")
         ok = False
 
-    # GEÇİCİ FALLBACK: eğer DB'de düz metin parola varsa (geçici, production'da kaldırılmalı)
-    if not ok and user['password'] == password:
-        log.debug("Plaintext match fallback used (temporary).")
-        ok = True
-
-    log.debug("Password check result: %s", ok)
+    log.debug(f"Password check result: {ok}")
 
     if ok:
         session['username'] = user['username']
@@ -147,6 +137,7 @@ def login():
     else:
         flash("Hatalı kullanıcı adı veya şifre!")
         return redirect(url_for('home'))
+
 
 @app.route('/logout')
 def logout():
