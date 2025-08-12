@@ -104,14 +104,22 @@ def login():
     db.close()
 
     if user and check_password_hash(user['password'], password):
+        # Giriş başarılı → rol kontrolü
         session['username'] = user['username']
         session['role'] = user['role']
         session['user_id'] = user['id']
+
         flash(f"Hoşgeldin, {user['username']}!")
-        return redirect(url_for('upload_file'))
+
+        # Adminse admin paneline yönlendir
+        if user['role'] == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        else:
+            return redirect(url_for('upload_file'))
     else:
         flash("Hatalı kullanıcı adı veya şifre!")
         return redirect(url_for('home'))
+
 
 @app.route('/logout')
 def logout():
