@@ -35,7 +35,7 @@ MAIL_PASSWORD = "baixextgzodivtuc"  # production: ortam değişkeni kullan
 # --- DB Bağlantısı ---
 def get_db():
     return pymysql.connect(
-        host="127.0.0.1",   # localhost veya IP
+        host="138.68.68.5",   # localhost veya IP
         user="admin",       # admin kullanıcı
         password="1234",    # şifre
         database="kullanici_db",
