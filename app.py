@@ -263,19 +263,6 @@ def upload_file():
                            max_size_member=MAX_SIZE_MEMBER // (1024*1024),
                            max_size_guest=MAX_SIZE_GUEST // (1024*1024))
 
-app = Flask(__name__)
-
-# --- DB bağlantısı ---
-def get_db():
-    return pymysql.connect(
-        host="138.68.68.5",
-        user="admin",
-        password="1234",
-        database="kullanici_db",
-        charset="utf8mb4",
-        cursorclass=pymysql.cursors.DictCursor
-    )
-
 # --- API: Bekleyen mailler ---
 @app.route('/api/get_pending_emails', methods=['GET'])
 def get_pending_emails():
@@ -292,6 +279,7 @@ def get_pending_emails():
 def mark_email_sent():
     data = request.get_json()
     email_id = data.get('id')
+
     if not email_id:
         return jsonify({'status': 'error', 'message': 'id parametresi eksik'}), 400
 
@@ -306,5 +294,6 @@ def mark_email_sent():
     db.close()
     return jsonify({'status': 'ok'})
 
-if __name__ == "__main__":
+# --- Uygulamayı çalıştır ---
+if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
