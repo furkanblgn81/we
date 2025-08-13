@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 # --- Flask app ---
 app = Flask(__name__)
-app.secret_key = "key"  # production: daha uzun/gizli yap
+app.secret_key = "key"  # production ortamında değiştir
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -23,7 +23,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 MAX_SIZE_MEMBER = 500 * 1024 * 1024  # 500 MB
 MAX_SIZE_GUEST = 5 * 1024 * 1024     # 5 MB
 
-# --- DB Bağlantısı ---
+# --- DB bağlantısı ---
 def get_db():
     return pymysql.connect(
         host="138.68.68.5",
@@ -34,7 +34,7 @@ def get_db():
         cursorclass=pymysql.cursors.DictCursor
     )
 
-# --- Decorator ---
+# --- Login kontrolü ---
 def login_required(role=None):
     def decorator(f):
         @wraps(f)
@@ -174,7 +174,7 @@ def get_download_logs(file_id):
 def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
 
-# --- Upload ---
+# --- Upload + Kuyruğa ekleme ---
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
     user_id = session.get('user_id')
@@ -222,16 +222,18 @@ def upload_file():
             guest_email,
             valid_days
         ))
-        file_id = cur.lastrowid
 
         # Kuyruğa ekle
+        download_link = url_for('download_file', filename=stored_name, _external=True)
+        email_body = f"Merhaba,\n\nSize bir dosya gönderildi: {filename}\nMesaj: {message}\nİndirmek için: {download_link}"
+
         cur.execute("""
             INSERT INTO email_queue (to_email, subject, body, status, created_at)
             VALUES (%s, %s, %s, 'pending', NOW())
         """, (
             receiver_email,
             "Dosya Paylaşım Bildirimi",
-            f"Merhaba,\n\nSize bir dosya gönderildi: {filename}\nMesaj: {message}\nİndirmek için: {url_for('download_file', filename=stored_name, _external=True)}"
+            email_body
         ))
 
         db.commit()
