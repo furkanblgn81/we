@@ -169,10 +169,26 @@ def get_download_logs(file_id):
     db.close()
     return logs
 
-# --- Download ---
-@app.route('/download/<filename>')
-def download_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+# --- Download Confirm / Onay Sayfası ---
+@app.route('/download_confirm/<stored_filename>')
+def download_confirm(stored_filename):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT original_filename FROM files WHERE stored_filename=%s", (stored_filename,))
+    result = cur.fetchone()
+    cur.close()
+    db.close()
+
+    if not result:
+        return "Dosya bulunamadı.", 404
+
+    original_filename = result['original_filename']
+    return render_template('download_confirm.html', stored_filename=stored_filename, original_filename=original_filename)
+
+# --- Gerçek Download ---
+@app.route('/download_file/<stored_filename>')
+def download_file_final(stored_filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], stored_filename, as_attachment=True)
 
 # --- Upload + Kuyruğa ekleme ---
 @app.route('/upload', methods=['GET', 'POST'])
@@ -224,7 +240,7 @@ def upload_file():
         ))
 
         # Kuyruğa ekle
-        download_link = url_for('download_file', filename=stored_name, _external=True)
+        download_link = url_for('download_confirm', stored_filename=stored_name, _external=True)
         email_body = f"Merhaba,\n\nSize bir dosya gönderildi: {filename}\nMesaj: {message}\nİndirmek için: {download_link}"
 
         cur.execute("""

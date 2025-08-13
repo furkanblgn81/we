@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dosya İndir</title>
+</head>
+<body>
+    <h2>Dosya "{{ original_filename }}" sizin için paylaşıldı.</h2>
+    <p>İndirmek istiyor musunuz?</p>
+    <a href="{{ url_for('download_file_final', stored_filename=stored_filename) }}">
+        <button>İndir</button>
+    </a>
+</body>
+</html>
