@@ -8,8 +8,8 @@ import uuid
 from datetime import datetime, timedelta
 import re
 import logging
-import smtplib
-from email.mime.text import MIMEText
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 # --- Logging ---
 logging.basicConfig(level=logging.DEBUG)
@@ -26,11 +26,9 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 MAX_SIZE_MEMBER = 500 * 1024 * 1024  # 500 MB
 MAX_SIZE_GUEST = 5 * 1024 * 1024     # 5 MB
 
-# --- Mail ayarları ---
-MAIL_SERVER = "smtp.gmail.com"
-MAIL_PORT = 587
-MAIL_USERNAME = "furkannbilgin82@gmail.com"
-MAIL_PASSWORD = "baixextgzodivtuc"  # production: ortam değişkeni kullan
+# --- SendGrid Ayarları ---
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")  # Sunucuda ortam değişkeni olarak ekle
+FROM_EMAIL = "furkannbilgin82@gmail.com"
 
 # --- DB Bağlantısı ---
 def get_db():
@@ -63,20 +61,18 @@ def is_valid_email(email):
     regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     return re.match(regex, email) is not None
 
-# --- Mail gönderme ---
+# --- SendGrid ile e-posta gönderme ---
 def send_email(to_email, subject, body):
     try:
-        msg = MIMEText(body, "html", "utf-8")
-        msg['Subject'] = subject
-        msg['From'] = MAIL_USERNAME
-        msg['To'] = to_email
-
-        server = smtplib.SMTP(MAIL_SERVER, MAIL_PORT)
-        server.starttls()
-        server.login(MAIL_USERNAME, MAIL_PASSWORD)
-        server.sendmail(MAIL_USERNAME, to_email, msg.as_string())
-        server.quit()
-        log.debug(f"Email sent to {to_email}")
+        message = Mail(
+            from_email=FROM_EMAIL,
+            to_emails=to_email,
+            subject=subject,
+            html_content=body
+        )
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        response = sg.send(message)
+        log.debug(f"Email sent to {to_email}, status_code: {response.status_code}")
         return True
     except Exception as e:
         log.exception(f"Failed to send email to {to_email}")
@@ -221,12 +217,10 @@ def upload_file():
         file = request.files.get('file')
         valid_days = int(request.form.get('valid_days', 7))
 
-        # --- Dosya seçimi kontrol ---
         if not file:
             flash("Dosya seçmelisiniz.")
             return redirect(request.url)
 
-        # --- Dosya boyutu kontrol ---
         max_size = MAX_SIZE_GUEST if is_guest else MAX_SIZE_MEMBER
         file.seek(0, os.SEEK_END)
         size = file.tell()
@@ -235,7 +229,6 @@ def upload_file():
             flash(f"Dosya boyutu sınırı aşıldı. Maksimum {max_size // (1024*1024)} MB")
             return redirect(request.url)
 
-        # --- Misafir email doğrulama ---
         guest_email = None
         if is_guest:
             guest_email = request.form.get('guest_email')
@@ -243,12 +236,10 @@ def upload_file():
                 flash("Geçerli bir e-posta adresi giriniz.")
                 return redirect(request.url)
 
-        # --- Dosya kaydetme ---
         filename = secure_filename(file.filename)
         stored_name = f"{uuid.uuid4().hex}_{filename}"
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], stored_name))
 
-        # --- DB kaydı ---
         db = get_db()
         cur = db.cursor()
         cur.execute("""
@@ -266,7 +257,7 @@ def upload_file():
         cur.close()
         db.close()
 
-        # --- E-posta gönderme ---
+        # --- SendGrid ile e-posta ---
         download_link = url_for('download_file', filename=stored_name, _external=True)
         email_body = f"""
             <p>Merhaba,</p>
