@@ -1,0 +1,92 @@
+import threading
+from flask_mail import Mail, Message
+
+# --- Flask-Mail konfigürasyonu ---
+app.config.update(
+    MAIL_SERVER='smtp.gmail.com',
+    MAIL_PORT=587,
+    MAIL_USE_TLS=True,
+    MAIL_USERNAME='furkannbilgin82@gmail.com',
+    MAIL_PASSWORD='baixextgzodivtuc'
+)
+mail = Mail(app)
+
+def send_email_async(msg):
+    """Maili arka planda gönderen fonksiyon"""
+    with app.app_context():
+        try:
+            mail.send(msg)
+            log.debug(f"Mail başarıyla gönderildi: {msg.recipients}")
+        except Exception as e:
+            log.exception("Mail gönderimi başarısız")
+
+# --- Upload fonksiyonu ---
+@app.route('/upload', methods=['GET', 'POST'])
+def upload_file():
+    user_id = session.get('user_id')
+    is_guest = user_id is None
+
+    if request.method == 'POST':
+        receiver_email = request.form.get('receiver_email')
+        message = request.form.get('message', '')
+        file = request.files.get('file')
+        valid_days = int(request.form.get('valid_days', 7))
+        guest_email = request.form.get('guest_email') if is_guest else None
+
+        if not file:
+            flash("Dosya seçmelisiniz.")
+            return redirect(request.url)
+
+        max_size = MAX_SIZE_GUEST if is_guest else MAX_SIZE_MEMBER
+        file.seek(0, os.SEEK_END)
+        size = file.tell()
+        file.seek(0)
+        if size > max_size:
+            flash(f"Dosya boyutu sınırı aşıldı. Maksimum {max_size // (1024*1024)} MB")
+            return redirect(request.url)
+
+        filename = secure_filename(file.filename)
+        stored_name = f"{uuid.uuid4().hex}_{filename}"
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], stored_name))
+
+        db = get_db()
+        cur = db.cursor()
+        cur.execute("""
+            INSERT INTO files (stored_filename, original_filename, receiver_email, uploaded_by, guest_email, upload_date, max_download_time)
+            VALUES (%s, %s, %s, %s, %s, NOW(), DATE_ADD(NOW(), INTERVAL %s DAY))
+        """, (
+            stored_name,
+            filename,
+            receiver_email,
+            user_id if not is_guest else None,
+            guest_email,
+            valid_days
+        ))
+        db.commit()
+        cur.close()
+        db.close()
+
+        # --- Mail gönderimi (agent ile) ---
+        msg_body = f"""
+            <p>Merhaba,</p>
+            <p>Yeni bir dosya sizinle paylaşıldı:</p>
+            <ul>
+                <li>Dosya Adı: {filename}</li>
+                <li>Mesaj: {message}</li>
+                <li>İndirme Linki: http://YOUR_DOMAIN/download/{stored_name}</li>
+            </ul>
+        """
+        msg = Message(
+            "Yeni Dosya Gönderildi",
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[receiver_email]
+        )
+        msg.html = msg_body
+        threading.Thread(target=send_email_async, args=(msg,)).start()
+
+        flash("Dosya başarıyla yüklendi ve mail gönderimi başlatıldı.")
+        return redirect(url_for('home'))
+
+    return render_template('upload.html', username=session.get('username'),
+                           max_size_member=MAX_SIZE_MEMBER // (1024*1024),
+                           max_size_guest=MAX_SIZE_GUEST // (1024*1024))

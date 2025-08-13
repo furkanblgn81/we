@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
 from functools import wraps
 import pymysql
 import os
@@ -204,6 +204,11 @@ def get_download_logs(file_id):
     db.close()
     return logs
 
+# --- Download ---
+@app.route('/download/<filename>')
+def download_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+
 # --- Upload ---
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
@@ -262,10 +267,12 @@ def upload_file():
         db.close()
 
         # --- E-posta gönderme ---
+        download_link = url_for('download_file', filename=stored_name, _external=True)
         email_body = f"""
             <p>Merhaba,</p>
             <p>Size bir dosya gönderildi: <strong>{filename}</strong></p>
             <p>Mesaj: {message}</p>
+            <p>Dosyayı indirmek için tıklayın: <a href="{download_link}">İndir</a></p>
             <p>İyi günler dileriz.</p>
         """
         send_email(receiver_email, "Dosya Paylaşım Bildirimi", email_body)
