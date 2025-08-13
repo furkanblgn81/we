@@ -26,7 +26,7 @@ MAX_SIZE_GUEST = 5 * 1024 * 1024     # 5 MB
 # --- DB bağlantısı ---
 def get_db():
     return pymysql.connect(
-        host="138.68.68.5",
+        host="127.0.0.1",
         user="admin",
         password="1234",
         database="kullanici_db",
