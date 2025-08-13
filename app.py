@@ -34,13 +34,14 @@ MAIL_PASSWORD = "baixextgzodivtuc"  # production: ortam değişkeni kullan
 # --- DB Bağlantısı: admin kullanıcı ---
 def get_db():
     return pymysql.connect(
-        host="127.0.0.1",  # localhost veya IP
+        host="127.0.0.1",   # veya localhost
         user="admin",
         password="1234",
         database="kullanici_db",
         charset="utf8mb4",
         cursorclass=pymysql.cursors.DictCursor
     )
+
 
 # --- Decorator ---
 def login_required(role=None):
