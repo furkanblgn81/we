@@ -31,16 +31,18 @@ MAIL_PORT = 587
 MAIL_USERNAME = "furkannbilgin82@gmail.com"
 MAIL_PASSWORD = "baixextgzodivtuc"  # production: ortam değişkeni kullan
 
+# --- DB Bağlantısı: admin kullanıcı ---
 def get_db():
     return pymysql.connect(
-        host="localhost",
-        user="root",
+        host="127.0.0.1",  # localhost veya IP
+        user="admin",
         password="1234",
         database="kullanici_db",
         charset="utf8mb4",
         cursorclass=pymysql.cursors.DictCursor
     )
 
+# --- Decorator ---
 def login_required(role=None):
     def decorator(f):
         @wraps(f)
@@ -55,16 +57,19 @@ def login_required(role=None):
         return decorated
     return decorator
 
+# --- Email doğrulama ---
 def is_valid_email(email):
     regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     return re.match(regex, email) is not None
 
+# --- Anasayfa ---
 @app.route('/')
 def home():
     if 'username' in session:
         return redirect(url_for('upload_file'))
     return render_template('login.html')
 
+# --- Kayıt ---
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -97,6 +102,7 @@ def register():
 
     return render_template('register.html')
 
+# --- Login ---
 @app.route('/login', methods=['POST'])
 def login():
     username = request.form.get('username', '').strip()
@@ -138,13 +144,14 @@ def login():
         flash("Hatalı kullanıcı adı veya şifre!")
         return redirect(url_for('home'))
 
-
+# --- Logout ---
 @app.route('/logout')
 def logout():
     session.clear()
     flash("Çıkış yapıldı.")
     return redirect(url_for('home'))
 
+# --- Admin Dashboard ---
 @app.route('/admin/dashboard')
 @login_required(role='admin')
 def admin_dashboard():
@@ -156,8 +163,7 @@ def admin_dashboard():
     db.close()
     return render_template('admin_dashboard.html', users=users)
 
-# ... (upload/download functions unchanged, ama DB insert fix aşağıda)
-
+# --- Upload ---
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
     user_id = session.get('user_id')
@@ -168,19 +174,10 @@ def upload_file():
                                max_size_member=MAX_SIZE_MEMBER // (1024*1024),
                                max_size_guest=MAX_SIZE_GUEST // (1024*1024))
 
-    # kod aynı...
-    # (kolları kısalttım burada, senin mevcut upload kodunu koruyabilirsin)
-    # dikkat: uploaded_files INSERT sorgusunu aşağıdaki formatla kullan
-
-    # örnek INSERT düzeltmesi:
-    # cur.execute("""
-    #     INSERT INTO uploaded_files
-    #     (uploader_id, guest_email, original_filename, saved_filename, upload_date, max_download_time, token, receiver_email, message)
-    #     VALUES (%s, %s, %s, %s, NOW(), %s, %s, %s, %s)
-    # """, (user_id, guest_email, original_name, unique_name, valid_until, token, receiver_email, message))
-
+    # Upload kodunu buraya ekle
     return "Upload endpoint placeholder (kodun burada çalışmalı)"
 
+# --- Yardımcı Fonksiyon ---
 def get_user_email(user_id):
     if not user_id:
         return None
@@ -192,7 +189,6 @@ def get_user_email(user_id):
     db.close()
     return user['email'] if user else None
 
-# Mail fonksiyonları olduğu gibi...
-
+# --- Uygulamayı çalıştır ---
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
