@@ -8,6 +8,8 @@ import uuid
 from datetime import datetime, timedelta
 import re
 import logging
+import smtplib
+from email.mime.text import MIMEText
 
 # --- Logging ---
 logging.basicConfig(level=logging.DEBUG)
@@ -23,6 +25,12 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 MAX_SIZE_MEMBER = 500 * 1024 * 1024  # 500 MB
 MAX_SIZE_GUEST = 5 * 1024 * 1024     # 5 MB
+
+# --- Mail ayarları ---
+MAIL_SERVER = "smtp.gmail.com"
+MAIL_PORT = 587
+MAIL_USERNAME = "furkannbilgin82@gmail.com"
+MAIL_PASSWORD = "baixextgzodivtuc"  # production: ortam değişkeni kullan
 
 # --- DB Bağlantısı ---
 def get_db():
@@ -54,6 +62,25 @@ def login_required(role=None):
 def is_valid_email(email):
     regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     return re.match(regex, email) is not None
+
+# --- Mail gönderme ---
+def send_email(to_email, subject, body):
+    try:
+        msg = MIMEText(body, "html", "utf-8")
+        msg['Subject'] = subject
+        msg['From'] = MAIL_USERNAME
+        msg['To'] = to_email
+
+        server = smtplib.SMTP(MAIL_SERVER, MAIL_PORT)
+        server.starttls()
+        server.login(MAIL_USERNAME, MAIL_PASSWORD)
+        server.sendmail(MAIL_USERNAME, to_email, msg.as_string())
+        server.quit()
+        log.debug(f"Email sent to {to_email}")
+        return True
+    except Exception as e:
+        log.exception(f"Failed to send email to {to_email}")
+        return False
 
 # --- Anasayfa ---
 @app.route('/')
@@ -167,6 +194,7 @@ def admin_files():
     db.close()
     return render_template('admin_files.html', files=files, get_download_logs=get_download_logs)
 
+# --- Download Logları ---
 def get_download_logs(file_id):
     db = get_db()
     cur = db.cursor()
@@ -188,10 +216,12 @@ def upload_file():
         file = request.files.get('file')
         valid_days = int(request.form.get('valid_days', 7))
 
+        # --- Dosya seçimi kontrol ---
         if not file:
             flash("Dosya seçmelisiniz.")
             return redirect(request.url)
 
+        # --- Dosya boyutu kontrol ---
         max_size = MAX_SIZE_GUEST if is_guest else MAX_SIZE_MEMBER
         file.seek(0, os.SEEK_END)
         size = file.tell()
@@ -200,10 +230,20 @@ def upload_file():
             flash(f"Dosya boyutu sınırı aşıldı. Maksimum {max_size // (1024*1024)} MB")
             return redirect(request.url)
 
+        # --- Misafir email doğrulama ---
+        guest_email = None
+        if is_guest:
+            guest_email = request.form.get('guest_email')
+            if not guest_email or not is_valid_email(guest_email):
+                flash("Geçerli bir e-posta adresi giriniz.")
+                return redirect(request.url)
+
+        # --- Dosya kaydetme ---
         filename = secure_filename(file.filename)
         stored_name = f"{uuid.uuid4().hex}_{filename}"
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], stored_name))
 
+        # --- DB kaydı ---
         db = get_db()
         cur = db.cursor()
         cur.execute("""
@@ -213,15 +253,24 @@ def upload_file():
             stored_name,
             filename,
             receiver_email,
-            user_id if not is_guest else None,
-            request.form.get('guest_email') if is_guest else None,
+            None if is_guest else user_id,
+            guest_email,
             valid_days
         ))
         db.commit()
         cur.close()
         db.close()
 
-        flash("Dosya başarıyla yüklendi.")
+        # --- E-posta gönderme ---
+        email_body = f"""
+            <p>Merhaba,</p>
+            <p>Size bir dosya gönderildi: <strong>{filename}</strong></p>
+            <p>Mesaj: {message}</p>
+            <p>İyi günler dileriz.</p>
+        """
+        send_email(receiver_email, "Dosya Paylaşım Bildirimi", email_body)
+
+        flash("Dosya başarıyla yüklendi ve e-posta gönderildi.")
         return redirect(url_for('home'))
 
     return render_template('upload.html', username=session.get('username'),
