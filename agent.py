@@ -3,7 +3,7 @@ import requests
 import smtplib
 from email.mime.text import MIMEText
 
-API_BASE_URL = "https://furkanbilgin.com.tr/"
+API_BASE_URL = "https://furkanbilgin.com.tr"
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SMTP_USER = "furkannbilgin82@gmail.com"
