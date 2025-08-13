@@ -1,36 +1,34 @@
 {% extends "base.html" %}
 {% block content %}
 <h2 class="text-center mb-4">Yüklenen Dosyalar</h2>
-<table class="table table-bordered table-striped">
-    <thead class="table-dark">
+
+<table class="table table-bordered">
+    <thead>
         <tr>
+            <th>ID</th>
             <th>Dosya Adı</th>
-            <th>Gönderilen Email</th>
             <th>Yükleyen</th>
-            <th>Yüklenme Tarihi</th>
-            <th>Geçerlilik Tarihi</th>
-            <th>İndirme Logları</th>
+            <th>Alıcı Email</th>
+            <th>Misafir Email</th>
+            <th>Yükleme Tarihi</th>
+            <th>Geçerlilik</th>
+            <th>İndirilenler</th>
         </tr>
     </thead>
     <tbody>
         {% for file in files %}
         <tr>
+            <td>{{ file.id }}</td>
             <td>{{ file.original_filename }}</td>
+            <td>{{ file.uploaded_by or "Misafir" }}</td>
             <td>{{ file.receiver_email }}</td>
-            <td>{{ file.uploader_id }}</td>
-            <td>{{ file.upload_date.strftime('%Y-%m-%d %H:%M') if file.upload_date else '' }}</td>
-            <td>{{ file.max_download_time.strftime('%Y-%m-%d %H:%M') if file.max_download_time else '' }}</td>
-            <td style="max-width: 300px; overflow-y: auto;">
-                {% set logs = get_download_logs(file.id) %}
-                {% if logs %}
-                    <ul class="list-unstyled text-start">
-                        {% for log in logs %}
-                            <li>📥 {{ log.downloader_email }} – {{ log.download_time.strftime('%Y-%m-%d %H:%M') }}</li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <small class="text-muted">İndirme kaydı yok</small>
-                {% endif %}
+            <td>{{ file.guest_email }}</td>
+            <td>{{ file.upload_date }}</td>
+            <td>{{ file.max_download_time }}</td>
+            <td>
+                {% for log in get_download_logs(file.id) %}
+                    {{ log.email }} ({{ log.download_time }})<br>
+                {% endfor %}
             </td>
         </tr>
         {% endfor %}
