@@ -1,36 +1,32 @@
 {% extends "base.html" %}
 {% block content %}
 <h2 class="text-center mb-4">Kullanıcı Listesi</h2>
-
-<div class="table-responsive">
-    <table class="table table-bordered table-striped align-middle text-center">
-        <thead class="table-dark">
-            <tr>
-                <th>ID</th>
-                <th>Kullanıcı Adı</th>
-                <th>Email</th>
-                <th>Rol</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for user in users %}
-            <tr>
-                <td>{{ user.id }}</td>
-                <td>{{ user.username }}</td>
-                <td>{{ user.email }}</td>
-                <td>
-                    {% if user.role == 'admin' %}
-                        <span class="badge bg-danger">Admin</span>
-                    {% else %}
-                        <span class="badge bg-secondary">Kullanıcı</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>ID</th>
+            <th>Kullanıcı Adı</th>
+            <th>Email</th>
+            <th>Rol</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in users %}
+        <tr>
+            <td>{{ user.id }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.email }}</td>
+            <td>
+                {% if user.role == 'admin' %}
+                    <span class="badge bg-danger">Admin</span>
+                {% else %}
+                    <span class="badge bg-secondary">Kullanıcı</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 <div class="text-center mt-4">
     <a href="{{ url_for('admin_files') }}" class="btn btn-info">Yüklenen Dosyaları Görüntüle</a>
 </div>

@@ -1,15 +1,8 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Kullanıcı Paneli</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
-</head>
-<body>
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+{% extends "base.html" %}
+{% block content %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
   <div class="container">
-    <a class="navbar-brand" href="{{ url_for('user_dashboard') }}">Kullanıcı Paneli</a>
+    <a class="navbar-brand" href="{{ url_for('upload_file') }}">Kullanıcı Paneli</a>
     <div class="collapse navbar-collapse justify-content-end">
       <span class="navbar-text me-3">
         Hoşgeldin, {{ session['username'] }}
@@ -19,11 +12,8 @@
   </div>
 </nav>
 
-<div class="container mt-4">
+<div class="container mt-4 text-center">
     <h2>Hoşgeldin, {{ session['username'] }}</h2>
-    <a href="{{ url_for('upload_file') }}" class="btn btn-success">Dosya Yükle</a>
+    <a href="{{ url_for('upload_file') }}" class="btn btn-success mt-3">Dosya Yükle</a>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% endblock %}

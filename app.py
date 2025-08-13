@@ -1,14 +1,10 @@
-# app.py
-from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory, flash, abort
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
 from functools import wraps
 import pymysql
 import os
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-import uuid
 from datetime import datetime, timedelta
-import smtplib
-from email.mime.text import MIMEText
 import re
 import logging
 
@@ -16,7 +12,6 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
-# --- Flask app ---
 app = Flask(__name__)
 app.secret_key = "key"  # production: daha uzun/gizli yap
 
@@ -27,17 +22,12 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 MAX_SIZE_MEMBER = 500 * 1024 * 1024  # 500 MB
 MAX_SIZE_GUEST = 5 * 1024 * 1024     # 5 MB
 
-MAIL_SERVER = "smtp.gmail.com"
-MAIL_PORT = 587
-MAIL_USERNAME = "furkannbilgin82@gmail.com"
-MAIL_PASSWORD = "baixextgzodivtuc"  # production: ortam değişkeni kullan
-
 # --- DB Bağlantısı ---
 def get_db():
     return pymysql.connect(
-        host="138.68.68.5",   # localhost veya IP
-        user="admin",       # admin kullanıcı
-        password="1234",    # şifre
+        host="127.0.0.1",   
+        user="admin",       
+        password="1234",    
         database="kullanici_db",
         charset="utf8mb4",
         cursorclass=pymysql.cursors.DictCursor
@@ -109,8 +99,6 @@ def login():
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '')
 
-    log.debug(f"Login attempt: username/email={username}, password length={len(password)}")
-
     db = get_db()
     cur = db.cursor()
     cur.execute("SELECT * FROM users WHERE username=%s OR email=%s", (username, username))
@@ -118,21 +106,11 @@ def login():
     cur.close()
     db.close()
 
-    log.debug(f"User fetched from DB: {user}")
-
     if not user:
         flash("Kullanıcı bulunamadı.")
         return redirect(url_for('home'))
 
-    # --- Şifre kontrol ---
-    try:
-        ok = check_password_hash(user['password'], password)
-    except Exception as e:
-        log.exception("Password check error")
-        ok = False
-
-    log.debug(f"Password check result: {ok}")
-
+    ok = check_password_hash(user['password'], password)
     if ok:
         session['username'] = user['username']
         session['role'] = user['role']
@@ -165,24 +143,71 @@ def admin_dashboard():
     db.close()
     return render_template('admin_dashboard.html', users=users)
 
+# --- Admin Files ---
+@app.route('/admin/files')
+@login_required(role='admin')
+def admin_files():
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT * FROM files ORDER BY id DESC")
+    files = cur.fetchall()
+    cur.close()
+    db.close()
+
+    def get_download_logs(file_id):
+        db2 = get_db()
+        cur2 = db2.cursor()
+        cur2.execute("SELECT downloader_email, download_time FROM downloads WHERE file_id=%s ORDER BY download_time DESC", (file_id,))
+        logs = cur2.fetchall()
+        cur2.close()
+        db2.close()
+        return logs
+
+    return render_template('admin_files.html', files=files, get_download_logs=get_download_logs)
+
 # --- Upload ---
 @app.route('/upload', methods=['GET', 'POST'])
+@login_required()
 def upload_file():
-    user_id = session.get('user_id')
-    guest_email = None
-
     if request.method == 'GET':
         return render_template('upload.html', username=session.get('username'),
                                max_size_member=MAX_SIZE_MEMBER // (1024*1024),
                                max_size_guest=MAX_SIZE_GUEST // (1024*1024))
 
-    # Upload kodunu buraya ekle
-    return "Upload endpoint placeholder (kodun burada çalışmalı)"
+    file = request.files.get('file')
+    receiver_email = request.form.get('receiver_email')
+    message = request.form.get('message', '')
+    valid_days = int(request.form.get('valid_days', 7))
 
-# --- Yardımcı Fonksiyon ---
+    if not file or not receiver_email:
+        flash("Dosya ve alıcı email zorunludur.")
+        return redirect(url_for('upload_file'))
+
+    filename = secure_filename(file.filename)
+    save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(save_path)
+
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("""
+        INSERT INTO files (original_filename, stored_filename, uploader_id, receiver_email, message, upload_date, max_download_time)
+        VALUES (%s, %s, %s, %s, %s, NOW(), DATE_ADD(NOW(), INTERVAL %s DAY))
+    """, (filename, filename, session['user_id'], receiver_email, message, valid_days))
+    db.commit()
+    cur.close()
+    db.close()
+
+    flash("Dosya başarıyla yüklendi!")
+    return redirect(url_for('upload_file'))
+
+# --- Dosya indir ---
+@app.route('/download/<filename>')
+@login_required()
+def download_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+
+# --- Yardımcı ---
 def get_user_email(user_id):
-    if not user_id:
-        return None
     db = get_db()
     cur = db.cursor()
     cur.execute("SELECT email FROM users WHERE id=%s", (user_id,))
@@ -191,6 +216,5 @@ def get_user_email(user_id):
     db.close()
     return user['email'] if user else None
 
-# --- Uygulamayı çalıştır ---
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

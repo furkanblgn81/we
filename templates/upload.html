@@ -2,25 +2,30 @@
 {% block content %}
 <h2 class="text-center mb-4">Dosya Yükle</h2>
 
+{% if session.role == 'admin' or session.role == 'user' %}
 <div class="alert alert-success text-center">
-    Giriş yaptınız. Maksimum <strong>500 MB</strong> dosya yükleyebilirsiniz.
+    Maksimum <strong>{{ max_size_member }} MB</strong> dosya yükleyebilirsiniz.
 </div>
+{% else %}
+<div class="alert alert-warning text-center">
+    Misafir olarak yükleme yapıyorsunuz. Maksimum <strong>{{ max_size_guest }} MB</strong> dosya yükleyebilirsiniz.
+</div>
+{% endif %}
 
-<form method="POST" action="{{ url_for('upload_file') }}" enctype="multipart/form-data" novalidate>
-
+<form method="POST" action="{{ url_for('upload_file') }}" enctype="multipart/form-data">
     <div class="mb-3">
         <label for="receiver_email" class="form-label">Gönderilecek Email</label>
-        <input type="email" id="receiver_email" name="receiver_email" class="form-control" required placeholder="Alıcının e-posta adresi">
+        <input type="email" id="receiver_email" name="receiver_email" class="form-control" required>
     </div>
 
     <div class="mb-3">
         <label for="message" class="form-label">Mesaj (isteğe bağlı)</label>
-        <textarea id="message" name="message" class="form-control" rows="3" placeholder="İsterseniz mesaj yazabilirsiniz..."></textarea>
+        <textarea id="message" name="message" class="form-control" rows="3"></textarea>
     </div>
 
     <div class="mb-3">
         <label for="file" class="form-label upload-area" tabindex="0">
-            Dosya Seç veya Bırakınız (maksimum 500 MB)
+            Dosya Seç veya Bırakınız
         </label>
         <input type="file" id="file" name="file" class="form-control" required>
     </div>
@@ -34,14 +39,11 @@
 </form>
 
 <script>
-    const uploadLabel = document.querySelector('.upload-area');
-    const fileInput = document.getElementById('file');
-    uploadLabel.addEventListener('keydown', function(e) {
-        if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            fileInput.click();
-        }
-    });
-    uploadLabel.addEventListener('click', () => fileInput.click());
+const uploadLabel = document.querySelector('.upload-area');
+const fileInput = document.getElementById('file');
+uploadLabel.addEventListener('keydown', function(e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
+});
+uploadLabel.addEventListener('click', () => fileInput.click());
 </script>
 {% endblock %}
