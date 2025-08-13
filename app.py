@@ -12,10 +12,11 @@ from email.mime.text import MIMEText
 import re
 import logging
 
-# Basit logging (console)
+# --- Logging ---
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
+# --- Flask app ---
 app = Flask(__name__)
 app.secret_key = "key"  # production: daha uzun/gizli yap
 
@@ -31,17 +32,16 @@ MAIL_PORT = 587
 MAIL_USERNAME = "furkannbilgin82@gmail.com"
 MAIL_PASSWORD = "baixextgzodivtuc"  # production: ortam değişkeni kullan
 
-# --- DB Bağlantısı: admin kullanıcı ---
+# --- DB Bağlantısı ---
 def get_db():
     return pymysql.connect(
-        host="127.0.0.1",   # veya localhost
-        user="admin",
-        password="1234",
+        host="127.0.0.1",   # localhost veya IP
+        user="admin",       # admin kullanıcı
+        password="1234",    # şifre
         database="kullanici_db",
         charset="utf8mb4",
         cursorclass=pymysql.cursors.DictCursor
     )
-
 
 # --- Decorator ---
 def login_required(role=None):
@@ -118,12 +118,13 @@ def login():
     cur.close()
     db.close()
 
-    log.debug(f"User found: {user}")
+    log.debug(f"User fetched from DB: {user}")
 
     if not user:
         flash("Kullanıcı bulunamadı.")
         return redirect(url_for('home'))
 
+    # --- Şifre kontrol ---
     try:
         ok = check_password_hash(user['password'], password)
     except Exception as e:
