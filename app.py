@@ -1,15 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, jsonify
 from functools import wraps
 import pymysql
 import os
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
-from datetime import datetime, timedelta
 import re
 import logging
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
 
 # --- Logging ---
 logging.basicConfig(level=logging.DEBUG)
@@ -25,10 +22,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 MAX_SIZE_MEMBER = 500 * 1024 * 1024  # 500 MB
 MAX_SIZE_GUEST = 5 * 1024 * 1024     # 5 MB
-
-# --- SendGrid Ayarları ---
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")  # Sunucuda ortam değişkeni olarak ekle
-FROM_EMAIL = "furkannbilgin82@gmail.com"
 
 # --- DB Bağlantısı ---
 def get_db():
@@ -60,23 +53,6 @@ def login_required(role=None):
 def is_valid_email(email):
     regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     return re.match(regex, email) is not None
-
-# --- SendGrid ile e-posta gönderme ---
-def send_email(to_email, subject, body):
-    try:
-        message = Mail(
-            from_email=FROM_EMAIL,
-            to_emails=to_email,
-            subject=subject,
-            html_content=body
-        )
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        response = sg.send(message)
-        log.debug(f"Email sent to {to_email}, status_code: {response.status_code}")
-        return True
-    except Exception as e:
-        log.exception(f"Failed to send email to {to_email}")
-        return False
 
 # --- Anasayfa ---
 @app.route('/')
@@ -124,8 +100,6 @@ def login():
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '')
 
-    log.debug(f"Login attempt: username/email={username}, password length={len(password)}")
-
     db = get_db()
     cur = db.cursor()
     cur.execute("SELECT * FROM users WHERE username=%s OR email=%s", (username, username))
@@ -133,19 +107,14 @@ def login():
     cur.close()
     db.close()
 
-    log.debug(f"User fetched from DB: {user}")
-
     if not user:
         flash("Kullanıcı bulunamadı.")
         return redirect(url_for('home'))
 
     try:
         ok = check_password_hash(user['password'], password)
-    except Exception as e:
-        log.exception("Password check error")
+    except:
         ok = False
-
-    log.debug(f"Password check result: {ok}")
 
     if ok:
         session['username'] = user['username']
@@ -253,27 +222,59 @@ def upload_file():
             guest_email,
             valid_days
         ))
+        file_id = cur.lastrowid
+
+        # Kuyruğa ekle
+        cur.execute("""
+            INSERT INTO email_queue (to_email, subject, body, status, created_at)
+            VALUES (%s, %s, %s, 'pending', NOW())
+        """, (
+            receiver_email,
+            "Dosya Paylaşım Bildirimi",
+            f"Merhaba,\n\nSize bir dosya gönderildi: {filename}\nMesaj: {message}\nİndirmek için: {url_for('download_file', filename=stored_name, _external=True)}"
+        ))
+
         db.commit()
         cur.close()
         db.close()
 
-        # --- SendGrid ile e-posta ---
-        download_link = url_for('download_file', filename=stored_name, _external=True)
-        email_body = f"""
-            <p>Merhaba,</p>
-            <p>Size bir dosya gönderildi: <strong>{filename}</strong></p>
-            <p>Mesaj: {message}</p>
-            <p>Dosyayı indirmek için tıklayın: <a href="{download_link}">İndir</a></p>
-            <p>İyi günler dileriz.</p>
-        """
-        send_email(receiver_email, "Dosya Paylaşım Bildirimi", email_body)
-
-        flash("Dosya başarıyla yüklendi ve e-posta gönderildi.")
+        flash("Dosya başarıyla yüklendi ve kuyruğa eklendi.")
         return redirect(url_for('home'))
 
     return render_template('upload.html', username=session.get('username'),
                            max_size_member=MAX_SIZE_MEMBER // (1024*1024),
                            max_size_guest=MAX_SIZE_GUEST // (1024*1024))
+
+# --- API: Bekleyen mailler ---
+@app.route('/api/get_pending_emails', methods=['GET'])
+def get_pending_emails():
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT * FROM email_queue WHERE status='pending' LIMIT 10")
+    emails = cur.fetchall()
+    cur.close()
+    db.close()
+    return jsonify(emails)
+
+# --- API: Maili gönderildi olarak işaretle ---
+@app.route('/api/mark_email_sent', methods=['POST'])
+def mark_email_sent():
+    data = request.get_json()
+    email_id = data.get('id')
+
+    if not email_id:
+        return jsonify({'status': 'error', 'message': 'id parametresi eksik'}), 400
+
+    db = get_db()
+    cur = db.cursor()
+    cur.execute(
+        "UPDATE email_queue SET status='sent', sent_at=NOW() WHERE id=%s",
+        (email_id,)
+    )
+    db.commit()
+    cur.close()
+    db.close()
+    return jsonify({'status': 'ok'})
 
 # --- Uygulamayı çalıştır ---
 if __name__ == '__main__':
